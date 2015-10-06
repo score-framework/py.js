@@ -7,7 +7,7 @@ with open(os.path.join(here, 'README.rst')) as f:
 
 setup(
     name='score.js',
-    version='0.1.1',
+    version='0.1.2',
     description='Helpers for managing javascript with The SCORE Framework',
     long_description=README,
     author='strg.at',
@@ -15,6 +15,8 @@ setup(
     url='http://score-framework.org',
     keywords='score framework web javascript',
     packages=['score.js'],
+    namespace_packages=['score'],
+    zip_safe=False,
     license='LGPL',
     classifiers=[
         'Development Status :: 4 - Beta',
