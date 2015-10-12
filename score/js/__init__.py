@@ -29,6 +29,8 @@ import os
 from score.init import init_cache_folder, ConfiguredModule, init_object
 from score.webassets import VirtualAssets, AssetNotFound
 from score.tpl import TemplateConverter
+from .exc2json import gen_excformat_js
+
 
 import logging
 log = logging.getLogger(__name__)
@@ -113,6 +115,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         tpl_conf.renderer.register_format('js', rootdir, cachedir, self)
         self.virtfiles = VirtualAssets()
         self.virtjs = self.virtfiles.decorator('js')
+        self.virtjs('lib/score/js/excformat.js')(gen_excformat_js)
 
     @property
     def minify(self):
