@@ -95,7 +95,6 @@ class ConfiguredJsPyramidModule(ConfiguredJsModule):
         Returns a pyramid response object with the optional *js* string as its
         body. Will only set the headers, if *js* is `None`.
         """
-        request.response.content_encoding = 'UTF-8'
         request.response.content_type = 'application/javascript; charset=UTF-8'
         if js:
             request.response.text = js
