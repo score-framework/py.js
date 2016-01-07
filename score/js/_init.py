@@ -26,24 +26,26 @@
 
 from functools import reduce
 import os
-from score.init import init_cache_folder, ConfiguredModule, init_object
+from score.init import (
+    init_cache_folder, ConfiguredModule, init_object, parse_bool)
 from score.webassets import VirtualAssets, AssetNotFound
 from score.tpl import TemplateConverter
 from .exc2json import gen_excformat_js
-
-
 import logging
-log = logging.getLogger(__name__)
+import urllib
+
+log = logging.getLogger('score.js')
 
 
 defaults = {
     'rootdir': None,
     'cachedir': None,
     'minifier': None,
+    'combine': False,
 }
 
 
-def init(confdict, webassets_conf, tpl_conf, html_conf=None):
+def init(confdict, webassets, tpl, html=None):
     """
     Initializes this module acoording to :ref:`our module initialization
     guidelines <module_initialization>` with the following configuration keys:
@@ -62,20 +64,23 @@ def init(confdict, webassets_conf, tpl_conf, html_conf=None):
         The minifier to use for minification. Will be initialized using
         :func:`score.init.init_object`. See :mod:`score.tpl.minifier` for
         available minifiers.
+
+    :confkey:`combine` :faint:`[default=False]`
+        Whether javascript files should be delivered as a single file. If this
+        value is `true` (as defined by :func:`score.init.parse_bool`), the
+        default url will point to the combined javascript file.
     """
     conf = dict(defaults.items())
     conf.update(confdict)
     if conf['minifier']:
         conf['minifier'] = init_object(conf, 'minifier')
-    if not conf['cachedir'] and webassets_conf.cachedir:
-        conf['cachedir'] = os.path.join(webassets_conf.cachedir, 'js')
+    if not conf['cachedir'] and webassets.cachedir:
+        conf['cachedir'] = os.path.join(webassets.cachedir, 'js')
     if conf['cachedir']:
         init_cache_folder(conf, 'cachedir', autopurge=True)
-    if 'html' in tpl_conf.renderer.formats:
-        tpl_conf.renderer.add_filter('html', 'escape_js',
-                                     escape, escape_output=False)
-    return ConfiguredJsModule(tpl_conf, conf['rootdir'],
-                              conf['cachedir'], conf['minifier'])
+    conf['combine'] = parse_bool(conf['combine'])
+    return ConfiguredJsModule(
+        tpl, conf['rootdir'], conf['cachedir'], conf['minifier'])
 
 
 _js_escapes = tuple([('%c' % z, '\\u%04X' % z) for z in range(32)] + [
@@ -108,14 +113,85 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
     :term:`template converter`.
     """
 
-    def __init__(self, tpl_conf, rootdir, cachedir, minifier):
+    def __init__(self, tpl, rootdir, cachedir, minifier):
         super().__init__(__package__)
-        self.tpl_conf = tpl_conf
+        self.tpl = tpl
         self.minifier = minifier
-        tpl_conf.renderer.register_format('js', rootdir, cachedir, self)
+        tpl.renderer.register_format('js', rootdir, cachedir, self)
         self.virtfiles = VirtualAssets()
         self.virtjs = self.virtfiles.decorator('js')
         self.virtjs('lib/score/js/excformat.js')(gen_excformat_js)
+        self._add_single_route()
+        self._add_combined_route()
+
+    def _add_single_route(self):
+
+        @self.http.newroute('score.js:single', '/js/{path>.*\.js$}')
+        def single(ctx, path):
+            versionmanager = self.webconf.versionmanager
+            if versionmanager.handle_request(ctx, 'js', path):
+                return self._response(ctx)
+            path = self._urlpath2path(path)
+            if path in self.virtfiles.paths():
+                js = self.virtfiles.render(path)
+            else:
+                js = self.tplconf.renderer.render_file(path)
+            return self._response(ctx, js)
+
+        @single.vars2url
+        def url_single(path):
+            urlpath = self._path2urlpath(path)
+            url = '/js/' + urllib.parse.quote(urlpath)
+            versionmanager = self.webconf.versionmanager
+            if path in self.virtfiles.paths():
+                hasher = lambda: self.virtfiles.hash(path)
+                renderer = lambda: self.virtfiles.render(path).encode('UTF-8')
+            else:
+                file = os.path.join(self.rootdir, path)
+                hasher = versionmanager.create_file_hasher(file)
+                renderer = lambda: self.tplconf.renderer.render_file(path).encode('UTF-8')
+            hash_ = versionmanager.store('js', urlpath, hasher, renderer)
+            if hash_:
+                url += '?_v=' + hash_
+            return url
+
+        self.route_single = single
+
+    def _add_combined_route(self):
+
+        @self.http.newroute('score.js:combined', '/combined.js')
+        def combined(ctx):
+            versionmanager = self.webconf.versionmanager
+            if versionmanager.handle_pyramid_request(ctx, 'js', '__combined__'):
+                return self._response(ctx)
+            return self._response(ctx, self.render_combined())
+
+        @combined.vars2url
+        def url_combined():
+            files = []
+            vfiles = []
+            for path in self.paths():
+                if path in self.virtfiles.paths():
+                    vfiles.append(path)
+                else:
+                    files.append(os.path.join(self.rootdir, path))
+            versionmanager = self.webconf.versionmanager
+            hashers = [versionmanager.create_file_hasher(files)]
+            for path in vfiles:
+                hashers.append(lambda: self.virtfiles.hash(path))
+            hash_ = versionmanager.store(
+                'js', '__combined__', hashers,
+                lambda: self.render_combined().encode('UTF-8'))
+            _query = {'_v': hash_} if hash_ else None
+            genurl = self.dummy_request.route_url
+            return genurl('score.js:combined', _query=_query)
+
+        self.route_combined = combined
+
+    def _finalize(self, score):
+        if 'html' in self.tpl.renderer.formats:
+            self.tpl.renderer.add_filter('html', 'escape_js',
+                                         escape, escape_output=False)
 
     @property
     def minify(self):
@@ -129,14 +205,14 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         """
         The configured root folder of javascript files.
         """
-        return self.tpl_conf.renderer.format_rootdir('js')
+        return self.tpl.renderer.format_rootdir('js')
 
     @property
     def cachedir(self):
         """
         The configured cache folder.
         """
-        return self.tpl_conf.renderer.format_cachedir('js')
+        return self.tpl.renderer.format_cachedir('js')
 
     def paths(self, includehidden=False):
         """
@@ -192,3 +268,69 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
                 return open(minfile, 'r').read()
         js = open(file, 'r').read()
         return self.convert_string(js, path)
+
+    def render_combined(self):
+        """
+        Renders the combined js file.
+        """
+        parts = []
+        for path in self.paths():
+            if not self.minify:
+                s = '/*{0}*/\n/*{1:^76}*/\n/*{0}*/'.format('*' * 76, path)
+                parts.append(s)
+            parts.append(self.tplconf.renderer.render_file(path))
+        return '\n\n'.join(parts)
+
+    def _response(self, ctx, js=None):
+        """
+        Sets appropriate headers on the http response.
+        Will optionally set the response body to the given *js* string.
+        """
+        ctx.http.response.content_type = 'application/javascript; charset=UTF-8'
+        if js:
+            ctx.http.response.text = js
+        return ctx.http.response
+
+    def _path2urlpath(self, path):
+        """
+        Converts a :term:`path <asset path>` to the corresponding path to use
+        in URLs.
+        """
+        urlpath = path
+        if not urlpath.endswith('.js'):
+            urlpath = urlpath[:urlpath.rindex('.')]
+        assert urlpath.endswith('.js')
+        return urlpath
+
+    def _urlpath2path(self, urlpath):
+        """
+        Converts a *urlpath*, as passed in via the URL, into the actual
+        :term:`asset path`.
+        """
+        assert urlpath.endswith('.js')
+        jspath = urlpath
+        if jspath in self.virtfiles.paths():
+            return jspath
+        if os.path.isfile(os.path.join(self.rootdir, jspath)):
+            return jspath
+        for ext in self.tplconf.renderer.engines:
+            file = os.path.join(self.rootdir, jspath + '.' + ext)
+            if os.path.isfile(file):
+                return jspath + '.' + ext
+        raise ValueError('Could not determine path for url "%s"' % urlpath)
+
+    def _tags(self, *paths):
+        """
+        Generates all ``script`` tags necessary to include all javascript
+        files. It is possible to generate the tags to specific js *paths*
+        only.
+        """
+        tag = '<script src="%s"></script>'
+        if len(paths):
+            links = [tag % self.url_single(path) for path in paths]
+            return '\n'.join(links)
+        if self.combine:
+            return tag % self.url_combined()
+        if not len(self.paths()):
+            return ''
+        return self._tags(*self.paths())
