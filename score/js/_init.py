@@ -45,7 +45,7 @@ defaults = {
 }
 
 
-def init(confdict, webassets, tpl, html=None):
+def init(confdict, webassets, http, tpl, html=None):
     """
     Initializes this module acoording to :ref:`our module initialization
     guidelines <module_initialization>` with the following configuration keys:
@@ -80,7 +80,8 @@ def init(confdict, webassets, tpl, html=None):
         init_cache_folder(conf, 'cachedir', autopurge=True)
     conf['combine'] = parse_bool(conf['combine'])
     return ConfiguredJsModule(
-        tpl, conf['rootdir'], conf['cachedir'], conf['minifier'])
+        http, tpl, webassets, conf['rootdir'], conf['cachedir'],
+        conf['combine'], conf['minifier'])
 
 
 _js_escapes = tuple([('%c' % z, '\\u%04X' % z) for z in range(32)] + [
@@ -113,9 +114,13 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
     :term:`template converter`.
     """
 
-    def __init__(self, tpl, rootdir, cachedir, minifier):
+    def __init__(self, http, tpl, webassets, rootdir, cachedir, combine,
+                 minifier):
         super().__init__(__package__)
+        self.http = http
         self.tpl = tpl
+        self.webassets = webassets
+        self.combine = combine
         self.minifier = minifier
         tpl.renderer.register_format('js', rootdir, cachedir, self)
         self.virtfiles = VirtualAssets()
@@ -128,28 +133,28 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
 
         @self.http.newroute('score.js:single', '/js/{path>.*\.js$}')
         def single(ctx, path):
-            versionmanager = self.webconf.versionmanager
+            versionmanager = self.webassets.versionmanager
             if versionmanager.handle_request(ctx, 'js', path):
                 return self._response(ctx)
             path = self._urlpath2path(path)
             if path in self.virtfiles.paths():
                 js = self.virtfiles.render(path)
             else:
-                js = self.tplconf.renderer.render_file(path)
+                js = self.tpl.renderer.render_file(path)
             return self._response(ctx, js)
 
         @single.vars2url
-        def url_single(path):
+        def url_single(ctx, path):
             urlpath = self._path2urlpath(path)
             url = '/js/' + urllib.parse.quote(urlpath)
-            versionmanager = self.webconf.versionmanager
+            versionmanager = self.webassets.versionmanager
             if path in self.virtfiles.paths():
                 hasher = lambda: self.virtfiles.hash(path)
                 renderer = lambda: self.virtfiles.render(path).encode('UTF-8')
             else:
                 file = os.path.join(self.rootdir, path)
                 hasher = versionmanager.create_file_hasher(file)
-                renderer = lambda: self.tplconf.renderer.render_file(path).encode('UTF-8')
+                renderer = lambda: self.tpl.renderer.render_file(path).encode('UTF-8')
             hash_ = versionmanager.store('js', urlpath, hasher, renderer)
             if hash_:
                 url += '?_v=' + hash_
@@ -161,13 +166,13 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
 
         @self.http.newroute('score.js:combined', '/combined.js')
         def combined(ctx):
-            versionmanager = self.webconf.versionmanager
+            versionmanager = self.webassets.versionmanager
             if versionmanager.handle_pyramid_request(ctx, 'js', '__combined__'):
                 return self._response(ctx)
             return self._response(ctx, self.render_combined())
 
         @combined.vars2url
-        def url_combined():
+        def url_combined(ctx):
             files = []
             vfiles = []
             for path in self.paths():
@@ -175,7 +180,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
                     vfiles.append(path)
                 else:
                     files.append(os.path.join(self.rootdir, path))
-            versionmanager = self.webconf.versionmanager
+            versionmanager = self.webassets.versionmanager
             hashers = [versionmanager.create_file_hasher(files)]
             for path in vfiles:
                 hashers.append(lambda: self.virtfiles.hash(path))
@@ -190,8 +195,10 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
 
     def _finalize(self, score):
         if 'html' in self.tpl.renderer.formats:
-            self.tpl.renderer.add_filter('html', 'escape_js',
-                                         escape, escape_output=False)
+            self.tpl.renderer.add_function(
+                'html', 'js', self._tags, escape_output=False)
+            self.tpl.renderer.add_filter(
+                'html', 'escape_js', escape, escape_output=False)
 
     @property
     def minify(self):
@@ -278,7 +285,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
             if not self.minify:
                 s = '/*{0}*/\n/*{1:^76}*/\n/*{0}*/'.format('*' * 76, path)
                 parts.append(s)
-            parts.append(self.tplconf.renderer.render_file(path))
+            parts.append(self.tpl.renderer.render_file(path))
         return '\n\n'.join(parts)
 
     def _response(self, ctx, js=None):
@@ -313,13 +320,13 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
             return jspath
         if os.path.isfile(os.path.join(self.rootdir, jspath)):
             return jspath
-        for ext in self.tplconf.renderer.engines:
+        for ext in self.tpl.renderer.engines:
             file = os.path.join(self.rootdir, jspath + '.' + ext)
             if os.path.isfile(file):
                 return jspath + '.' + ext
         raise ValueError('Could not determine path for url "%s"' % urlpath)
 
-    def _tags(self, *paths):
+    def _tags(self, ctx, *paths):
         """
         Generates all ``script`` tags necessary to include all javascript
         files. It is possible to generate the tags to specific js *paths*
@@ -327,10 +334,10 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         """
         tag = '<script src="%s"></script>'
         if len(paths):
-            links = [tag % self.url_single(path) for path in paths]
+            links = [tag % self.http.url(ctx, 'score.js:single', path) for path in paths]
             return '\n'.join(links)
         if self.combine:
-            return tag % self.url_combined()
+            return tag % self.http.url(ctx, 'score.js:combined')
         if not len(self.paths()):
             return ''
-        return self._tags(*self.paths())
+        return self._tags(ctx, *self.paths())
