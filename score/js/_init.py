@@ -138,9 +138,9 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
                 return self._response(ctx)
             path = self._urlpath2path(path)
             if path in self.virtfiles.paths():
-                js = self.virtfiles.render(path)
+                js = self.virtfiles.render(ctx, path)
             else:
-                js = self.tpl.renderer.render_file(path)
+                js = self.tpl.renderer.render_file(ctx, path)
             return self._response(ctx, js)
 
         @single.vars2url
@@ -149,12 +149,12 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
             url = '/js/' + urllib.parse.quote(urlpath)
             versionmanager = self.webassets.versionmanager
             if path in self.virtfiles.paths():
-                hasher = lambda: self.virtfiles.hash(path)
-                renderer = lambda: self.virtfiles.render(path).encode('UTF-8')
+                hasher = lambda: self.virtfiles.hash(ctx, path)
+                renderer = lambda: self.virtfiles.render(ctx, path).encode('UTF-8')
             else:
                 file = os.path.join(self.rootdir, path)
                 hasher = versionmanager.create_file_hasher(file)
-                renderer = lambda: self.tpl.renderer.render_file(path).encode('UTF-8')
+                renderer = lambda: self.tpl.renderer.render_file(ctx, path).encode('UTF-8')
             hash_ = versionmanager.store('js', urlpath, hasher, renderer)
             if hash_:
                 url += '?_v=' + hash_
@@ -249,7 +249,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
                     paths.append(relpath)
         return paths
 
-    def convert_string(self, js, path=None):
+    def convert_string(self, ctx, js, path=None):
         if path and self.cachedir:
             cachefile = os.path.join(self.cachedir, path)
             file = os.path.join(self.rootdir, path)
@@ -263,9 +263,9 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
             open(cachefile, 'w').write(js)
         return js
 
-    def convert_file(self, path):
+    def convert_file(self, ctx, path):
         if path in self.virtfiles.paths():
-            return self.convert_string(self.virtfiles.render(path))
+            return self.convert_string(ctx, self.virtfiles.render(ctx, path))
         file = os.path.join(self.rootdir, path)
         if not os.path.isfile(file):
             raise AssetNotFound('js', path)
@@ -274,7 +274,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
             if os.path.isfile(minfile):
                 return open(minfile, 'r').read()
         js = open(file, 'r').read()
-        return self.convert_string(js, path)
+        return self.convert_string(ctx, js, path)
 
     def render_combined(self):
         """

@@ -35,7 +35,7 @@ def exc2json(excinfo, untrace=[]):
     }
 
 
-def gen_excformat_js():
+def gen_excformat_js(ctx):
     """
     Generates a javascript function that can convert the return value of of a
     exc2json call to a human-readable stack trace. The resulting string will
