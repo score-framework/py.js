@@ -167,12 +167,13 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         @self.http.newroute('score.js:combined', '/combined.js')
         def combined(ctx):
             versionmanager = self.webassets.versionmanager
-            if versionmanager.handle_pyramid_request(ctx, 'js', '__combined__'):
+            if versionmanager.handle_request(ctx, 'js', '__combined__'):
                 return self._response(ctx)
-            return self._response(ctx, self.render_combined())
+            return self._response(ctx, self.render_combined(ctx))
 
         @combined.vars2url
         def url_combined(ctx):
+            url = '/combined.js'
             files = []
             vfiles = []
             for path in self.paths():
@@ -183,21 +184,21 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
             versionmanager = self.webassets.versionmanager
             hashers = [versionmanager.create_file_hasher(files)]
             for path in vfiles:
-                hashers.append(lambda: self.virtfiles.hash(path))
+                hashers.append(lambda: self.virtfiles.hash(ctx, path))
             hash_ = versionmanager.store(
                 'js', '__combined__', hashers,
-                lambda: self.render_combined().encode('UTF-8'))
-            _query = {'_v': hash_} if hash_ else None
-            genurl = self.dummy_request.route_url
-            return genurl('score.js:combined', _query=_query)
+                lambda: self.render_combined(ctx).encode('UTF-8'))
+            if hash_:
+                url += '?_v=' + hash_
+            return url
 
         self.route_combined = combined
 
-    def _finalize(self, score):
-        if 'html' in self.tpl.renderer.formats:
-            self.tpl.renderer.add_function(
+    def _finalize(self, tpl):
+        if 'html' in tpl.renderer.formats:
+            tpl.renderer.add_function(
                 'html', 'js', self._tags, escape_output=False)
-            self.tpl.renderer.add_filter(
+            tpl.renderer.add_filter(
                 'html', 'escape_js', escape, escape_output=False)
 
     @property
@@ -276,7 +277,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         js = open(file, 'r').read()
         return self.convert_string(ctx, js, path)
 
-    def render_combined(self):
+    def render_combined(self, ctx):
         """
         Renders the combined js file.
         """
@@ -285,7 +286,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
             if not self.minify:
                 s = '/*{0}*/\n/*{1:^76}*/\n/*{0}*/'.format('*' * 76, path)
                 parts.append(s)
-            parts.append(self.tpl.renderer.render_file(path))
+            parts.append(self.tpl.renderer.render_file(ctx, path))
         return '\n\n'.join(parts)
 
     def _response(self, ctx, js=None):
