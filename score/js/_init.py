@@ -234,7 +234,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
             if os.path.basename(path).startswith('require.js'):
                 return '1-' + path
             return '2'
-        paths = self.tpl_conf.renderer.paths(
+        paths = self.tpl.renderer.paths(
             'js', self.virtfiles, includehidden)
         paths.sort(key=key)
         # FIXME: remove minified javascript files
