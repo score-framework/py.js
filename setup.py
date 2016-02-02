@@ -14,7 +14,7 @@ setup(
     author_email='score@strg.at',
     url='http://score-framework.org',
     keywords='score framework web javascript',
-    packages=['score.js'],
+    packages=['score', 'score.js'],
     namespace_packages=['score'],
     zip_safe=False,
     license='LGPL',
