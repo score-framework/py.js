@@ -228,26 +228,16 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         :term:`paths <asset path>`, as well as the paths of all :term:`virtual
         javascript files <virtual asset>`.
         """
-        paths = self.virtfiles.paths()
-        if not includehidden:
-            paths = [p for p in paths if os.path.basename(p)[0] != '_']
-        for parent, _, files in os.walk(self.rootdir, followlinks=True):
-            for file in files:
-                if not file.endswith('.js'):
-                    continue
-                if file.endswith('.min.js'):
-                    continue
-                if not includehidden and file[0] == '_':
-                    continue
-                fullpath = os.path.join(parent, file)
-                if not os.path.exists(fullpath):
-                    log.warn('Unreadable js path: ' + fullpath)
-                    continue
-                relpath = os.path.relpath(fullpath, self.rootdir)
-                if file in ('require.js', 'globals.js'):
-                    paths.insert(0, relpath)
-                else:
-                    paths.append(relpath)
+        def key(path):
+            if os.path.basename(path).startswith('globals.js'):
+                return '0-' + path
+            if os.path.basename(path).startswith('require.js'):
+                return '1-' + path
+            return '2'
+        paths = self.tpl_conf.renderer.paths(
+            'js', self.virtfiles, includehidden)
+        paths.sort(key=key)
+        # FIXME: remove minified javascript files
         return paths
 
     def convert_string(self, ctx, js, path=None):
