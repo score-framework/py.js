@@ -33,6 +33,6 @@ setup(
         'Topic :: Software Development :: Libraries :: Application Frameworks',
     ],
     install_requires=[
-        'score.webassets >= 0.1',
+        'score.webassets >= 0.2',
     ],
 )
