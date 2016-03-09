@@ -45,11 +45,3 @@ Minifier
 .. autoclass:: score.js.minifier.Uglifyjs
 
 .. autoclass:: score.js.minifier.YuiCompressor
-
-
-Pyramid Integration
-===================
-
-.. automodule:: score.js.pyramid
-    :members:
-
