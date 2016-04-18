@@ -149,12 +149,21 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
             url = '/js/' + urllib.parse.quote(urlpath)
             versionmanager = self.webassets.versionmanager
             if path in self.virtfiles.paths():
-                hasher = lambda: self.virtfiles.hash(ctx, path)
-                renderer = lambda: self.virtfiles.render(ctx, path).encode('UTF-8')
+
+                def hasher():
+                    return self.virtfiles.hash(ctx, path)
+
+                def renderer():
+                    return self.virtfiles.render(ctx, path).encode('UTF-8')
+
             else:
                 file = os.path.join(self.rootdir, path)
                 hasher = versionmanager.create_file_hasher(file)
-                renderer = lambda: self.tpl.renderer.render_file(ctx, path).encode('UTF-8')
+
+                def renderer():
+                    return self.tpl.renderer.render_file(ctx, path).\
+                        encode('UTF-8')
+
             hash_ = versionmanager.store('js', urlpath, hasher, renderer)
             if hash_:
                 url += '?_v=' + hash_
@@ -228,15 +237,8 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         :term:`paths <asset path>`, as well as the paths of all :term:`virtual
         javascript files <virtual asset>`.
         """
-        def key(path):
-            if os.path.basename(path).startswith('globals.js'):
-                return '0-' + path
-            if os.path.basename(path).startswith('require.js'):
-                return '1-' + path
-            return '2'
-        paths = self.tpl.renderer.paths(
-            'js', self.virtfiles, includehidden)
-        paths.sort(key=key)
+        paths = self.tpl.renderer.paths('js', self.virtfiles, includehidden)
+        paths.sort()
         # FIXME: remove minified javascript files
         return paths
 
@@ -325,8 +327,8 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         """
         tag = '<script src="%s"></script>'
         if len(paths):
-            links = [tag % self.http.url(ctx, 'score.js:single', path) for path in paths]
-            return '\n'.join(links)
+            return '\n'.join(tag % self.http.url(ctx, 'score.js:single', path)
+                             for path in paths)
         if self.combine:
             return tag % self.http.url(ctx, 'score.js:combined')
         if not len(self.paths()):
