@@ -18,7 +18,9 @@ def exc2json(excinfo, untrace=[]):
             ]
         }
 
-    It is possible to omit the last value of *excinfo*, effectively passing
+    It is possible to omit the last value of *excinfo*, effectively reducing the
+    generated exception description to a class name and a message.
+
     The optional parameter *untrace* contains file names that will be removed
     from the beginning of the stack trace.
     """
