@@ -265,8 +265,8 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         if self.minifier and file.endswith('.js'):
             minfile = file[:-3] + '.min.js'
             if os.path.isfile(minfile):
-                return open(minfile, 'r').read()
-        js = open(file, 'r').read()
+                return open(minfile, 'r', encoding='utf-8-sig').read()
+        js = open(file, 'r', encoding='utf-8-sig').read()
         return self.convert_string(ctx, js, path)
 
     def render_combined(self, ctx):
