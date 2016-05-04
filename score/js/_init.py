@@ -182,26 +182,30 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
 
         @combined.vars2url
         def url_combined(ctx):
-            url = '/combined.js'
-            files = []
-            vfiles = []
-            for path in self.paths():
-                if path in self.virtfiles.paths():
-                    vfiles.append(path)
-                else:
-                    files.append(os.path.join(self.rootdir, path))
             versionmanager = self.webassets.versionmanager
-            hashers = [versionmanager.create_file_hasher(files)]
-            for path in vfiles:
-                hashers.append(lambda: self.virtfiles.hash(ctx, path))
             hash_ = versionmanager.store(
-                'js', '__combined__', hashers,
+                'js', '__combined__', self.generate_combined_hasher(ctx),
                 lambda: self.render_combined(ctx).encode('UTF-8'))
+            url = '/combined.js'
             if hash_:
                 url += '?_v=' + hash_
             return url
 
         self.route_combined = combined
+
+    def generate_combined_hasher(self, ctx):
+        files = []
+        vfiles = []
+        for path in self.paths():
+            if path in self.virtfiles.paths():
+                vfiles.append(path)
+            else:
+                files.append(os.path.join(self.rootdir, path))
+        versionmanager = self.webassets.versionmanager
+        hashers = [versionmanager.create_file_hasher(files)]
+        for path in vfiles:
+            hashers.append(lambda: self.virtfiles.hash(ctx, path))
+        return hashers
 
     def _finalize(self, tpl):
         if 'html' in tpl.renderer.formats:
