@@ -50,22 +50,22 @@ def init(confdict, webassets, http, tpl, html=None):
     Initializes this module acoording to :ref:`our module initialization
     guidelines <module_initialization>` with the following configuration keys:
 
-    :confkey:`rootdir` :faint:`[default=None]`
+    :confkey:`rootdir` :confdefault:`None`
         Denotes the root folder containing all javascript files. Will fall
         back to a sub-folder of the folder in :mod:`score.tpl`'s
         configuration, as described in :func:`score.tpl.init`.
 
-    :confkey:`cachedir` :faint:`[default=None]`
+    :confkey:`cachedir` :confdefault:`None`
         A dedicated cache folder for this module. It is generally sufficient
         to provide a ``cachedir`` for :mod:`score.tpl`, as this module will
         use a sub-folder of that by default.
 
-    :confkey:`minifier` :faint:`[default=None]`
+    :confkey:`minifier` :confdefault:`None`
         The minifier to use for minification. Will be initialized using
         :func:`score.init.init_object`. See :mod:`score.tpl.minifier` for
         available minifiers.
 
-    :confkey:`combine` :faint:`[default=False]`
+    :confkey:`combine` :confdefault:`False`
         Whether javascript files should be delivered as a single file. If this
         value is `true` (as defined by :func:`score.init.parse_bool`), the
         default url will point to the combined javascript file.
