@@ -30,7 +30,6 @@ from score.init import (
     init_cache_folder, ConfiguredModule, init_object, parse_bool)
 from score.webassets import VirtualAssets, AssetNotFound
 from score.tpl import TemplateConverter
-from .exc2json import gen_excformat_js
 import logging
 import urllib
 
@@ -125,7 +124,6 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         tpl.renderer.register_format('js', rootdir, cachedir, self)
         self.virtfiles = VirtualAssets()
         self.virtjs = self.virtfiles.decorator('js')
-        self.virtjs('lib/score/js/excformat.js')(gen_excformat_js)
         self._add_single_route()
         self._add_combined_route()
 
