@@ -26,4 +26,6 @@
 
 from ._init import init, ConfiguredJsModule
 
+__version__ = '0.2.5'
+
 __all__ = ('init', 'ConfiguredJsModule')
