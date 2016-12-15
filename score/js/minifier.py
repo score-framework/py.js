@@ -106,13 +106,14 @@ class Slimit(MinifierBackend):
 
     def __init__(self):
         """
-        Initializes the slimit library. This will fix an error in current version
-        of ply.
-        See https://github.com/rspivak/slimit/issues/64#issuecomment-38801874 for
-        details.
+        Initializes the slimit library. This will fix an error in current
+        version of ply.
+        See https://github.com/rspivak/slimit/issues/64#issuecomment-38801874
+        for details.
         """
         from ply import yacc
-        def __getitem__(self,n):
+
+        def __getitem__(self, n):
             if isinstance(n, slice):
                 return self.__getslice__(n.start, n.stop)
             if n >= 0:
@@ -122,11 +123,11 @@ class Slimit(MinifierBackend):
         yacc.YaccProduction.__getitem__ = __getitem__
 
     def minify_file(self, file, outfile=None):
-        return slimit_str(open(file, 'r').read(), outfile)
+        return self.minify_string(open(file, 'r').read(), outfile)
 
     def minify_string(self, string, outfile=None):
         from slimit import minify
-        result = minify(js, mangle=True)
+        result = minify(string, mangle=True)
         if outfile:
             open(outfile, 'w').write(result)
         else:
@@ -166,13 +167,15 @@ class Uglifyjs(MinifierBackend):
             args += ['--output', outfile]
         args.append(file)
         process = subprocess.Popen(args,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                                   stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         output, error = process.communicate()
         if process.returncode:
-            raise subprocess.CalledProcessError(process.returncode,
-                    ' '.join(map(lambda x: repr(x), args)), error)
+            raise subprocess.CalledProcessError(
+                process.returncode,
+                ' '.join(map(lambda x: repr(x), args)),
+                error)
         if error:
             try:
                 error = str(error, 'UTF-8')
@@ -182,22 +185,23 @@ class Uglifyjs(MinifierBackend):
         if not outfile:
             return str(output, 'UTF-8')
 
-
     def minify_string(self, js, outfile=None):
         args = ['uglifyjs', '--mangle', '--compress', '--lint',
                 '--comments', '/^!|@license|@preserve/']
         if outfile:
             args += ['--output', outfile]
         process = subprocess.Popen(args,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                                   stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         if isinstance(js, str):
             js = js.encode('UTF-8')
         output, error = process.communicate(js)
         if process.returncode:
-            raise subprocess.CalledProcessError(process.returncode,
-                    ' '.join(map(lambda x: repr(x), args)), error)
+            raise subprocess.CalledProcessError(
+                process.returncode,
+                ' '.join(map(lambda x: repr(x), args)),
+                error)
         if error:
             try:
                 error = str(error, 'UTF-8')
@@ -217,46 +221,47 @@ class YuiCompressor(MinifierBackend):
     .. _yuicompressor's jar file: https://github.com/yui/yuicompressor/releases
     """
 
-    def __init__(self, jar):
-        self.jar = jar
+    def __init__(self, jar_path):
+        self.jar_path = jar_path
 
     def minify_file(self, file, outfile=None):
-        args = ['java', '-jar', self.jar, '--type', 'js', '--charset', 'UTF-8', '-v']
+        args = ['java', '-jar', self.jar_path,
+                '--type', 'js', '--charset', 'UTF-8', '-v']
         if outfile:
             args += ['-o', outfile]
         args.append(file)
         process = subprocess.Popen(args,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                                   stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         output, error = process.communicate()
         if process.returncode:
-            raise subprocess.CalledProcessError(process.returncode,
-                    ' '.join(map(lambda x: repr(x), args)), error)
+            raise subprocess.CalledProcessError(
+                process.returncode,
+                ' '.join(map(lambda x: repr(x), args)),
+                error)
         if error:
             log.info('yui gave these warnings:\n%s' % error)
         if not outfile:
             return str(output, 'UTF-8')
-
 
     def minify_string(self, js, outfile=None):
         if not js:
             # Yui seems to crash when trying to convert empty strings.
             return ''
-        args = ['java', '-jar', self.jar, '--type', 'js', '--charset', 'UTF-8', '-v']
+        args = ['java', '-jar', self.jar_path,
+                '--type', 'js', '--charset', 'UTF-8', '-v']
         if outfile:
             args += ['-o', outfile]
         process = subprocess.Popen(args,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                                   stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
         output, error = process.communicate(js)
         if process.returncode:
             raise subprocess.CalledProcessError(process.returncode,
-                    ' '.join(args), error)
+                                                ' '.join(args), error)
         if error:
             log.info('yui gave these warnings:\n%s' % error)
         if not outfile:
             return str(output, 'UTF-8')
-
-
