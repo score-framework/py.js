@@ -245,7 +245,8 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
         return paths
 
     def convert_string(self, ctx, js, path=None):
-        if path and self.cachedir:
+        cachefile = None
+        if path and os.path.exists(path) and self.cachedir:
             cachefile = os.path.join(self.cachedir, path)
             file = os.path.join(self.rootdir, path)
             if os.path.isfile(cachefile) and \
@@ -253,7 +254,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
                 return open(cachefile, 'r').read()
         if self.minifier:
             js = self.minifier.minify_string(js, path=path)
-        if path and self.cachedir:
+        if cachefile:
             os.makedirs(os.path.dirname(cachefile), exist_ok=True)
             open(cachefile, 'w').write(js)
         return js
