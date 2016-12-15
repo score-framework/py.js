@@ -252,7 +252,7 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
                     os.path.getmtime(cachefile) > os.path.getmtime(file):
                 return open(cachefile, 'r').read()
         if self.minifier:
-            js = self.minifier.minify_string(js)
+            js = self.minifier.minify_string(js, path=path)
         if path and self.cachedir:
             os.makedirs(os.path.dirname(cachefile), exist_ok=True)
             open(cachefile, 'w').write(js)
@@ -260,7 +260,8 @@ class ConfiguredJsModule(ConfiguredModule, TemplateConverter):
 
     def convert_file(self, ctx, path):
         if path in self.virtfiles.paths():
-            return self.convert_string(ctx, self.virtfiles.render(ctx, path))
+            return self.convert_string(
+                ctx, self.virtfiles.render(ctx, path), path)
         file = os.path.join(self.rootdir, path)
         if not os.path.isfile(file):
             raise AssetNotFound('js', path)

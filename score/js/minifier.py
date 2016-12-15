@@ -80,6 +80,9 @@ class MinifierBackend(metaclass=ABCMeta):
     Abstract base class for minifier backends.
     """
 
+    def __init__(self, shortname):
+        self.log = log.getChild(shortname)
+
     @abstractmethod
     def minify_file(self, file, outfile=None):
         """
@@ -89,7 +92,7 @@ class MinifierBackend(metaclass=ABCMeta):
         return
 
     @abstractmethod
-    def minify_string(self, string, outfile=None):
+    def minify_string(self, string, outfile=None, *, path=None):
         """
         Backend-specific implementation of the global function
         :func:`minify_string`.
@@ -111,6 +114,7 @@ class Slimit(MinifierBackend):
         See https://github.com/rspivak/slimit/issues/64#issuecomment-38801874
         for details.
         """
+        MinifierBackend.__init__(self, 'slimit')
         from ply import yacc
 
         def __getitem__(self, n):
@@ -125,7 +129,7 @@ class Slimit(MinifierBackend):
     def minify_file(self, file, outfile=None):
         return self.minify_string(open(file, 'r').read(), outfile)
 
-    def minify_string(self, string, outfile=None):
+    def minify_string(self, string, outfile=None, *, path=None):
         from slimit import minify
         result = minify(string, mangle=True)
         if outfile:
@@ -141,10 +145,13 @@ class Jsmin(MinifierBackend):
     .. _jsmin: https://pypi.python.org/pypi/jsmin
     """
 
+    def __init__(self):
+        MinifierBackend.__init__(self, 'jsmin')
+
     def minify_file(self, file, outfile=None):
         return self.jsmin_str(open(file, 'r').read())
 
-    def minify_string(self, js, outfile=None):
+    def minify_string(self, js, outfile=None, *, path=None):
         from jsmin import jsmin
         result = jsmin(js)
         if outfile:
@@ -159,6 +166,9 @@ class Uglifyjs(MinifierBackend):
 
     .. _uglifyjs: https://github.com/mishoo/UglifyJS
     """
+
+    def __init__(self):
+        MinifierBackend.__init__(self, 'uglifyjs')
 
     def minify_file(self, file, outfile=None):
         args = ['uglifyjs', '--mangle', '--compress', '--lint',
@@ -178,14 +188,14 @@ class Uglifyjs(MinifierBackend):
                 error)
         if error:
             try:
-                error = str(error, 'UTF-8')
+                error = str(error, 'UTF-8').strip()
             except UnicodeDecodeError:
                 pass
-            log.info('uglifyjs warnings for %s:\n%s' % (file, error))
+            self.log.info('warnings for %s:\n%s' % (file, error))
         if not outfile:
             return str(output, 'UTF-8')
 
-    def minify_string(self, js, outfile=None):
+    def minify_string(self, js, outfile=None, *, path=None):
         args = ['uglifyjs', '--mangle', '--compress', '--lint',
                 '--comments', '/^!|@license|@preserve/']
         if outfile:
@@ -204,10 +214,13 @@ class Uglifyjs(MinifierBackend):
                 error)
         if error:
             try:
-                error = str(error, 'UTF-8')
+                error = str(error, 'UTF-8').strip()
             except UnicodeDecodeError:
                 pass
-            log.info('uglifyjs warnings:\n%s' % (error,))
+            if path:
+                self.log.info('warnings for %s:\n%s' % (path, error))
+            else:
+                self.log.info('warnings:\n%s' % (error,))
         if not outfile:
             return str(output, 'UTF-8')
 
@@ -223,6 +236,7 @@ class YuiCompressor(MinifierBackend):
 
     def __init__(self, jar_path):
         self.jar_path = jar_path
+        MinifierBackend.__init__(self, 'yui')
 
     def minify_file(self, file, outfile=None):
         args = ['java', '-jar', self.jar_path,
@@ -241,11 +255,15 @@ class YuiCompressor(MinifierBackend):
                 ' '.join(map(lambda x: repr(x), args)),
                 error)
         if error:
-            log.info('yui gave these warnings:\n%s' % error)
+            try:
+                error = str(error, 'UTF-8')
+            except UnicodeDecodeError:
+                pass
+            self.log.info('warnings for %s:\n%s' % (file, error))
         if not outfile:
             return str(output, 'UTF-8')
 
-    def minify_string(self, js, outfile=None):
+    def minify_string(self, js, outfile=None, *, path=None):
         if not js:
             # Yui seems to crash when trying to convert empty strings.
             return ''
@@ -257,11 +275,20 @@ class YuiCompressor(MinifierBackend):
                                    stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
+        if isinstance(js, str):
+            js = js.encode('UTF-8')
         output, error = process.communicate(js)
         if process.returncode:
             raise subprocess.CalledProcessError(process.returncode,
                                                 ' '.join(args), error)
         if error:
-            log.info('yui gave these warnings:\n%s' % error)
+            try:
+                error = str(error, 'UTF-8')
+            except UnicodeDecodeError:
+                pass
+            if path:
+                self.log.info('warnings for %s:\n%s' % (path, error))
+            else:
+                self.log.info('warnings:\n%s' % (error,))
         if not outfile:
             return str(output, 'UTF-8')
