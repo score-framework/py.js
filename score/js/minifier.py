@@ -174,7 +174,11 @@ class Uglifyjs(MinifierBackend):
             raise subprocess.CalledProcessError(process.returncode,
                     ' '.join(map(lambda x: repr(x), args)), error)
         if error:
-            log.info('uglifyjs gave these warnings:\n%s' % error)
+            try:
+                error = str(error, 'UTF-8')
+            except UnicodeDecodeError:
+                pass
+            log.info('uglifyjs warnings for %s:\n%s' % (file, error))
         if not outfile:
             return str(output, 'UTF-8')
 
@@ -195,7 +199,11 @@ class Uglifyjs(MinifierBackend):
             raise subprocess.CalledProcessError(process.returncode,
                     ' '.join(map(lambda x: repr(x), args)), error)
         if error:
-            log.info('uglifyjs gave these warnings:\n%s' % error)
+            try:
+                error = str(error, 'UTF-8')
+            except UnicodeDecodeError:
+                pass
+            log.info('uglifyjs warnings:\n%s' % (error,))
         if not outfile:
             return str(output, 'UTF-8')
 
