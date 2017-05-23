@@ -167,11 +167,12 @@ class Uglifyjs(MinifierBackend):
     .. _uglifyjs: https://github.com/mishoo/UglifyJS
     """
 
-    def __init__(self):
+    def __init__(self, uglify_path='uglifyjs'):
         MinifierBackend.__init__(self, 'uglifyjs')
+        self.uglify_path = uglify_path
 
     def minify_file(self, file, outfile=None):
-        args = ['uglifyjs', '--mangle', '--compress', '--lint',
+        args = [self.uglify_path, '--mangle', '--compress', '--lint',
                 '--comments', '/^!|@license|@preserve/']
         if outfile:
             args += ['--output', outfile]
@@ -196,7 +197,7 @@ class Uglifyjs(MinifierBackend):
             return str(output, 'UTF-8')
 
     def minify_string(self, js, outfile=None, *, path=None):
-        args = ['uglifyjs', '--mangle', '--compress', '--lint',
+        args = [self.uglify_path, '--mangle', '--compress', '--lint',
                 '--comments', '/^!|@license|@preserve/']
         if outfile:
             args += ['--output', outfile]
