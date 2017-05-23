@@ -25,7 +25,7 @@
 # Licensee has his registered seat, an establishment or assets.
 
 from functools import reduce
-from score.init import ConfiguredModule, init_object, parse_list, parse_bool
+from score.init import ConfiguredModule, parse_object, parse_list, parse_bool
 import logging
 
 log = logging.getLogger('score.js')
@@ -56,7 +56,7 @@ def init(confdict, tpl):
     filetype = tpl.filetypes['application/javascript']
     minifier = None
     if conf['minifier']:
-        minifier = init_object(conf, 'minifier')
+        minifier = parse_object(conf, 'minifier')
         if parse_bool(conf['tpl.register_minifier']):
             filetype.postprocessors.append(minifier.minify_string)
     extensions = parse_list(conf['tpl.extensions'])
