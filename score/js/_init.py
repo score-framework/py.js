@@ -74,7 +74,6 @@ def init(confdict, tpl):
 _js_escapes = tuple([('%c' % z, '\\u%04X' % z) for z in range(32)] + [
     ('\\', r'\u005C'),
     ('\'', r'\u0027'),
-    ('"', r'\u0022'),
     ('>', r'\u003E'),
     ('<', r'\u003C'),
     ('&', r'\u0026'),
