@@ -27,6 +27,7 @@
 from functools import reduce
 from score.init import ConfiguredModule, parse_object, parse_list, parse_bool
 import logging
+import json
 
 log = logging.getLogger('score.js')
 
@@ -35,6 +36,7 @@ defaults = {
     'minifier': None,
     'tpl.extensions': ['js'],
     'tpl.register_minifier': True,
+    'tpl.html_escape': 'json',
 }
 
 
@@ -61,6 +63,11 @@ def init(confdict, tpl):
             filetype.postprocessors.append(minifier.minify_string)
     extensions = parse_list(conf['tpl.extensions'])
     filetype.extensions.extend(extensions)
+    if conf['tpl.html_escape']:
+        tpl.filetypes['text/html'].add_global(
+            conf['tpl.html_escape'],
+            lambda value: escape(json.dumps(value)),
+            escape=False)
     return ConfiguredJsModule(tpl, minifier, extensions)
 
 
