@@ -36,7 +36,7 @@ defaults = {
     'minifier': None,
     'tpl.extensions': ['js'],
     'tpl.register_minifier': True,
-    'tpl.html_escape': 'json',
+    'tpl.html_escape': 'escape_json',
 }
 
 
