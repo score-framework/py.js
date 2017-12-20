@@ -54,7 +54,7 @@ def init(confdict, tpl):
 
     :confkey:`tpl.html_escape` :confdefault:`escape_json`
         An optional function, that will be registered as a :ref:`global function
-        <tpl_global>` in 'text/html' templates.
+        <tpl_globals>` in 'text/html' templates.
 
     """
     conf = dict(defaults.items())
@@ -100,8 +100,7 @@ def escape(value):
 class ConfiguredJsModule(ConfiguredModule):
     """
     This module's :class:`configuration object
-    <score.init.ConfiguredModule>`, which is also a
-    :term:`template converter`.
+    <score.init.ConfiguredModule>`.
     """
 
     def __init__(self, tpl, minifier, extensions):
