@@ -26,10 +26,7 @@
 
 from functools import reduce
 from score.init import ConfiguredModule, parse_object, parse_list, parse_bool
-import logging
 import json
-
-log = logging.getLogger('score.js')
 
 
 defaults = {
@@ -47,11 +44,18 @@ def init(confdict, tpl):
 
     :confkey:`minifier` :confdefault:`None`
         The minifier to use for minification. Will be initialized using
-        :func:`score.init.init_object`. See :mod:`score.tpl.minifier` for
-        available minifiers.
+        :func:`score.init.parse_object`. See :ref:`score.tpl.minifier
+        <js_minification>` for available minifiers.
 
-    :confkey:`tpl.extensions` :confdefault:`js`
-        The extensions to register with the tpl module.
+    :confkey:`tpl.register_minifier` :confdefault:`False`
+        Whether javascript templates should be minified. Setting this to `True`
+        will register a :ref:`postprocessor <tpl_file_types>` for the
+        'application/javascript' file type in :mod:`score.tpl`.
+
+    :confkey:`tpl.html_escape` :confdefault:`escape_json`
+        An optional function, that will be registered as a :ref:`global function
+        <tpl_global>` in 'text/html' templates.
+
     """
     conf = dict(defaults.items())
     conf.update(confdict)
@@ -107,6 +111,9 @@ class ConfiguredJsModule(ConfiguredModule):
         self.extensions = extensions
 
     def score_webassets_proxy(self):
+        """
+        Provides a :class:`WebassetsProxy` for :mod:`score.webassets`.
+        """
         from score.webassets import TemplateWebassetsProxy
 
         class JavascriptWebassetsProxy(TemplateWebassetsProxy):

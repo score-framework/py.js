@@ -7,31 +7,28 @@
 score.js
 ********
 
-This module manages the javascript file :term:`format <template format>`
-``js`` in :mod:`score.tpl`.
+This small module just defines the 'application/javascript' mime type for
+:mod:`score.tpl` and configures some parameters for javascript rendering.
+
 
 Quickstart
 ==========
 
-This module does the exact same thing as :mod:`score.css`, except that the
-function is called ``js`` and operates on javascript files:
+Usually, it is sufficient to add this module to your initialization list:
 
-.. code-block:: python
 
-    js('foo.js', 'bar.js')
+.. code-block:: ini
 
-The above code will generate the following by default:
-
-.. code-block:: html
-
-    <script src="/js/foo.js"></script>
-    <script src="/js/bar.js"></script>
+    [score.init]
+    modules =
+        score.tpl
+        score.js
 
 
 Configuration
 =============
 
-.. autofunction:: score.js.init
+.. autofunction:: init
 
 Details
 =======
@@ -44,11 +41,16 @@ Minification
 API
 ===
 
+Configuration
+-------------
+
 .. autofunction:: score.js.init
 
 .. autoclass:: score.js.ConfiguredJsModule
     :members:
 
+
+.. _js_minification:
 
 Minifier
 --------
