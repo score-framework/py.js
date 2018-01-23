@@ -172,7 +172,7 @@ class Uglifyjs(MinifierBackend):
         self.uglify_path = uglify_path
 
     def minify_file(self, file, outfile=None):
-        args = [self.uglify_path, '--mangle', '--compress', '--lint',
+        args = [self.uglify_path, '--mangle', '--compress',
                 '--comments', '/^!|@license|@preserve/']
         if outfile:
             args += ['--output', outfile]
@@ -197,7 +197,7 @@ class Uglifyjs(MinifierBackend):
             return str(output, 'UTF-8')
 
     def minify_string(self, js, outfile=None, *, path=None):
-        args = [self.uglify_path, '--mangle', '--compress', '--lint',
+        args = [self.uglify_path, '--mangle', '--compress',
                 '--comments', '/^!|@license|@preserve/']
         if outfile:
             args += ['--output', outfile]
