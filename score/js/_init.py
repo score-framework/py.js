@@ -120,8 +120,15 @@ class ConfiguredJsModule(ConfiguredModule):
             def __init__(self, tpl):
                 super().__init__(tpl, 'application/javascript')
 
-            def render_url(self, url):
-                return '<script src="%s"></script>' % (url,)
+            def render_url(self, url, async=False, defer=False):
+                if async and defer:
+                    raise ValueError('Cannot set async and defer at once')
+                attrs = ''
+                if async:
+                    attrs = ' async="async"'
+                elif defer:
+                    attrs = ' defer="defer"'
+                return '<script src="%s"%s></script>' % (url, attrs)
 
             def create_bundle(self, paths):
                 """
