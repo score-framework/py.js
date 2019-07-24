@@ -120,11 +120,14 @@ class ConfiguredJsModule(ConfiguredModule):
             def __init__(self, tpl):
                 super().__init__(tpl, 'application/javascript')
 
-            def render_url(self, url, async=False, defer=False):
-                if async and defer:
+            def render_url(self, url, **kwargs):
+                async_ = (kwargs.get('async', False)
+                          or kwargs.get('async', False))
+                defer = kwargs.get('defer', False)
+                if async_ and defer:
                     raise ValueError('Cannot set async and defer at once')
                 attrs = ''
-                if async:
+                if async_:
                     attrs = ' async="async"'
                 elif defer:
                     attrs = ' defer="defer"'
