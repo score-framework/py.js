@@ -60,10 +60,11 @@ def init(confdict, tpl):
     conf = dict(defaults.items())
     conf.update(confdict)
     filetype = tpl.filetypes['application/javascript']
+    tpl_register_minifier = parse_bool(conf['tpl.register_minifier'])
     minifier = None
     if conf['minifier']:
         minifier = parse_object(conf, 'minifier')
-        if parse_bool(conf['tpl.register_minifier']):
+        if tpl_register_minifier:
             filetype.postprocessors.append(minifier.minify_string)
     extensions = parse_list(conf['tpl.extensions'])
     filetype.extensions.extend(extensions)
@@ -72,7 +73,7 @@ def init(confdict, tpl):
             conf['tpl.html_escape'],
             lambda value: escape(json.dumps(value)),
             escape=False)
-    return ConfiguredJsModule(tpl, minifier, extensions)
+    return ConfiguredJsModule(tpl, minifier, tpl_register_minifier, extensions)
 
 
 _js_escapes = tuple([('%c' % z, '\\u%04X' % z) for z in range(32)] + [
@@ -103,10 +104,11 @@ class ConfiguredJsModule(ConfiguredModule):
     <score.init.ConfiguredModule>`.
     """
 
-    def __init__(self, tpl, minifier, extensions):
+    def __init__(self, tpl, minifier, tpl_register_minifier, extensions):
         super().__init__(__package__)
         self.tpl = tpl
         self.minifier = minifier
+        self.tpl_register_minifier = tpl_register_minifier
         self.extensions = extensions
 
     def score_webassets_proxy(self):
