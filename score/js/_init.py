@@ -124,7 +124,7 @@ class ConfiguredJsModule(ConfiguredModule):
 
             def render_url(self, url, **kwargs):
                 async_ = (kwargs.get('async', False)
-                          or kwargs.get('async', False))
+                          or kwargs.get('async_', False))
                 defer = kwargs.get('defer', False)
                 if async_ and defer:
                     raise ValueError('Cannot set async and defer at once')
