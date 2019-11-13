@@ -141,7 +141,7 @@ class ConfiguredJsModule(ConfiguredModule):
                 Renders the combined js file.
                 """
                 parts = []
-                for path in sorted(paths):
+                for path in paths:
                     s = '/*{0}*/\n/*{1:^74}*/\n/*{0}*/'.format('*' * 74, path)
                     parts.append(s)
                     parts.append(self.tpl.render(path,
